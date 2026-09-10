@@ -2,6 +2,7 @@
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import App from "./App";
+import { ECOMMERCE_ENABLED } from "./config/features";
 
 const values = new Map<string, string>();
 Object.defineProperty(globalThis, "localStorage", {
@@ -21,14 +22,40 @@ describe("application", () => {
     window.history.replaceState({}, "", "/");
   });
 
-  it("renders the shop route into the page", async () => {
+  it("renders the full-screen homepage navigation", () => {
     render(<App />);
+    expect(screen.getByRole("link", { name: "Reese Brady Art" })).toBeTruthy();
     expect(
-      screen.getByRole("heading", { name: "Paintings for quiet spaces." }),
+      screen.getByRole("button", { name: "Open navigation menu" }),
     ).toBeTruthy();
-    expect(
-      screen.getByRole("heading", { name: "Available work" }),
-    ).toBeTruthy();
+  });
+
+  it("renders the About page on its public route", () => {
+    window.history.replaceState({}, "", "/about");
+    render(<App />);
+    expect(screen.getByRole("heading", { name: "About" })).toBeTruthy();
+    expect(screen.getByAltText("Portrait of Reese Brady")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "About" }).className).toBe(
+      "active",
+    );
+  });
+
+  it.each(["/cart", "/checkout", "/success"])(
+    "shows the intentional shop message at %s while ecommerce is disabled",
+    (path) => {
+      window.history.replaceState({}, "", path);
+      render(<App />);
+      expect(
+        screen.getByRole("heading", { name: "Shop coming soon" }),
+      ).toBeTruthy();
+      expect(
+        screen.queryByRole("button", { name: "Proceed to checkout" }),
+      ).toBeNull();
+    },
+  );
+
+  it("ships with public ecommerce disabled", () => {
+    expect(ECOMMERCE_ENABLED).toBe(false);
   });
 
   it("redirects an unauthenticated admin visitor to login", async () => {

@@ -1,10 +1,13 @@
 import type { ReactNode } from "react";
 import { Link, useLocation } from "wouter";
 import { useCart } from "../context/CartContext";
+import { ECOMMERCE_ENABLED } from "../config/features";
 
 export function Layout({ children }: { children: ReactNode }) {
   const { itemCount } = useCart();
   const [location] = useLocation();
+  const isHome = location === "/";
+  if (isHome) return <main className="home-main">{children}</main>;
   return (
     <>
       <header className="site-header">
@@ -12,6 +15,9 @@ export function Layout({ children }: { children: ReactNode }) {
           Reese Brady
         </Link>
         <nav aria-label="Main navigation">
+          <Link href="/about" className={location === "/about" ? "active" : ""}>
+            About
+          </Link>
           <Link
             href="/available"
             className={location.startsWith("/available") ? "active" : ""}
@@ -33,9 +39,16 @@ export function Layout({ children }: { children: ReactNode }) {
           <Link
             href="/cart"
             className={location === "/cart" ? "active" : ""}
-            aria-label={`Cart with ${itemCount} items`}
+            aria-label={
+              ECOMMERCE_ENABLED
+                ? `Cart with ${itemCount} items`
+                : "Cart — shop coming soon"
+            }
           >
-            Cart <span className="cart-count">{itemCount}</span>
+            Cart
+            {ECOMMERCE_ENABLED && (
+              <span className="cart-count">{itemCount}</span>
+            )}
           </Link>
         </nav>
       </header>

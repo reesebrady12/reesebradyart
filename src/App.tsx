@@ -11,6 +11,9 @@ import { ProductPage } from "./pages/ProductPage";
 import { ShopPage } from "./pages/ShopPage";
 import { SuccessPage } from "./pages/SuccessPage";
 import { GalleryPage } from "./pages/GalleryPage";
+import { AboutPage } from "./pages/AboutPage";
+import { ComingSoonPage } from "./pages/ComingSoonPage";
+import { ECOMMERCE_ENABLED } from "./config/features";
 import { LoginPage } from "./pages/admin/LoginPage";
 import { ForgotPasswordPage } from "./pages/admin/ForgotPasswordPage";
 import { ResetPasswordPage } from "./pages/admin/ResetPasswordPage";
@@ -64,6 +67,7 @@ export default function App() {
                 <Layout>
                   <Switch>
                     <Route path="/" component={ShopPage} />
+                    <Route path="/about" component={AboutPage} />
                     <Route path="/available">
                       <GalleryPage category="available" />
                     </Route>
@@ -74,8 +78,20 @@ export default function App() {
                       <GalleryPage category="project" />
                     </Route>
                     <Route path="/work/:slug" component={ProductPage} />
-                    <Route path="/cart" component={CartPage} />
-                    <Route path="/success" component={SuccessPage} />
+                    <Route
+                      path="/cart"
+                      component={ECOMMERCE_ENABLED ? CartPage : ComingSoonPage}
+                    />
+                    <Route
+                      path="/checkout"
+                      component={ECOMMERCE_ENABLED ? CartPage : ComingSoonPage}
+                    />
+                    <Route
+                      path="/success"
+                      component={
+                        ECOMMERCE_ENABLED ? SuccessPage : ComingSoonPage
+                      }
+                    />
                     <Route component={ShopPage} />
                   </Switch>
                 </Layout>

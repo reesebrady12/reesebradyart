@@ -6,6 +6,7 @@ import { formatCurrency } from "../lib/currency";
 import { canPurchase, mediumLabel } from "../lib/artwork";
 import { mapProduct } from "../context/CatalogContext";
 import type { Product } from "../types";
+import { ECOMMERCE_ENABLED } from "../config/features";
 
 export function ProductPage() {
   const { slug } = useParams();
@@ -57,7 +58,7 @@ export function ProductPage() {
   );
   const price = selectedVariant?.priceInCents ?? product.priceInCents;
   const currentImage = product.images?.[activeImage];
-  const purchaseAllowed = canPurchase(product);
+  const purchaseAllowed = ECOMMERCE_ENABLED && canPurchase(product);
 
   const handleAdd = () => {
     addItem(product.id, effectiveVariantId);
@@ -172,7 +173,7 @@ export function ProductPage() {
                 : "Fine-art print"}
         </p>
         <h1>{product.name}</h1>
-        {product.category === "available" && (
+        {ECOMMERCE_ENABLED && product.category === "available" && (
           <p className="price">
             {purchaseAllowed ? formatCurrency(price) : "Unavailable"}
           </p>

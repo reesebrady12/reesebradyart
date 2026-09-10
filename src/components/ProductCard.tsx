@@ -2,6 +2,7 @@ import { Link } from "wouter";
 import { formatCurrency } from "../lib/currency";
 import type { Product } from "../types";
 import { mediumLabel } from "../lib/artwork";
+import { ECOMMERCE_ENABLED } from "../config/features";
 
 export function ProductCard({ product }: { product: Product }) {
   const startingPrice =
@@ -32,13 +33,14 @@ export function ProductCard({ product }: { product: Product }) {
             <p className="card-dimensions">{product.dimensions}</p>
           )}
         </div>
-        <p>
-          {product.category === "sold"
-            ? product.collectionLabel || "Sold"
-            : product.category === "project"
-              ? ""
+        {(product.category === "sold" ||
+          (ECOMMERCE_ENABLED && product.category === "available")) && (
+          <p>
+            {product.category === "sold"
+              ? product.collectionLabel || "Sold"
               : `${product.variants ? "From " : ""}${formatCurrency(startingPrice)}`}
-        </p>
+          </p>
+        )}
       </div>
     </article>
   );

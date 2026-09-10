@@ -39,6 +39,132 @@
   justify-content: space-between;
   border-bottom: 1px solid var(--line);
 }
+
+/* Full-viewport homepage */
+.home-page-active {
+  overflow: hidden;
+}
+.home-main,
+.home-hero {
+  width: 100%;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+}
+.home-hero {
+  position: relative;
+  isolation: isolate;
+  background: #171714;
+}
+.home-slideshow,
+.home-slideshow img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.home-slideshow img {
+  max-width: none;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 1.4s ease-in-out;
+}
+.home-slideshow img.is-active {
+  opacity: 1;
+}
+.home-header {
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: clamp(22px, 3.2vw, 46px) clamp(22px, 4vw, 58px);
+  color: white;
+  text-shadow: 0 1px 10px rgb(0 0 0 / 45%);
+}
+.home-wordmark {
+  font-family: "Playfair Display", Georgia, serif;
+  font-size: clamp(1.2rem, 2vw, 1.55rem);
+  letter-spacing: 0.02em;
+}
+.menu-toggle,
+.menu-close {
+  position: relative;
+  width: 46px;
+  height: 46px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+.menu-toggle span,
+.menu-close span {
+  position: absolute;
+  left: 9px;
+  width: 28px;
+  height: 1px;
+  background: currentColor;
+  box-shadow: 0 1px 8px rgb(0 0 0 / 50%);
+}
+.menu-toggle span:first-child {
+  top: 18px;
+}
+.menu-toggle span:last-child {
+  top: 27px;
+}
+.home-menu-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: grid;
+  place-items: center;
+  min-height: 100dvh;
+  background: var(--paper);
+  color: var(--ink);
+  animation: menu-fade-in 280ms ease-out;
+}
+.menu-close {
+  position: absolute;
+  top: clamp(22px, 3.2vw, 46px);
+  right: clamp(22px, 4vw, 58px);
+}
+.menu-close span {
+  top: 23px;
+  box-shadow: none;
+}
+.menu-close span:first-child {
+  transform: rotate(45deg);
+}
+.menu-close span:last-child {
+  transform: rotate(-45deg);
+}
+.home-menu-links {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(16px, 3vh, 30px);
+  font-family: "Playfair Display", Georgia, serif;
+  font-size: clamp(2.1rem, 6vw, 5rem);
+  line-height: 1.05;
+}
+.home-menu-links a {
+  padding: 0;
+  border: 0;
+  transition: opacity 180ms ease;
+}
+.home-menu-links a:hover {
+  opacity: 0.55;
+}
+@keyframes menu-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
 .wordmark,
 h1,
 h2 {
@@ -360,6 +486,32 @@ select {
   color: var(--muted);
   line-height: 1.7;
 }
+.coming-soon-page {
+  min-height: calc(100vh - 90px);
+  min-height: calc(100dvh - 90px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px 24px;
+  text-align: center;
+}
+.coming-soon-page h1 {
+  margin: 0;
+  font-size: clamp(3rem, 8vw, 7rem);
+  line-height: 0.95;
+  text-transform: uppercase;
+}
+.coming-soon-page > p:not(.eyebrow) {
+  max-width: 480px;
+  margin: 28px auto 0;
+  color: var(--muted);
+  font-size: 1rem;
+  line-height: 1.7;
+}
+.coming-soon-page .text-link {
+  margin-top: 34px;
+}
 .link-button {
   width: auto;
   margin-top: 28px;
@@ -377,6 +529,36 @@ footer {
   border-top: 1px solid var(--line);
   color: var(--muted);
   font-size: 0.8rem;
+}
+.about-page {
+  width: min(1120px, calc(100% - 48px));
+  margin: 0 auto;
+  padding: clamp(64px, 9vw, 140px) 0 clamp(90px, 12vw, 180px);
+}
+.about-portrait {
+  width: min(820px, 100%);
+  aspect-ratio: 4 / 5;
+  margin: 0 auto;
+  object-fit: cover;
+  background: #d8d2c6;
+}
+.about-copy {
+  display: grid;
+  grid-template-columns: minmax(160px, 0.7fr) minmax(0, 1.3fr);
+  gap: clamp(40px, 9vw, 130px);
+  width: min(820px, 100%);
+  margin: clamp(54px, 8vw, 100px) auto 0;
+}
+.about-copy h1 {
+  margin: 0;
+  font-size: clamp(2.6rem, 5vw, 4.8rem);
+  line-height: 1;
+}
+.about-copy p {
+  margin: 0 0 1.4em;
+  color: var(--muted);
+  font-size: clamp(1rem, 1.4vw, 1.12rem);
+  line-height: 1.8;
 }
 @media (max-width: 800px) {
   .site-header {
@@ -414,6 +596,15 @@ footer {
     grid-column: 2;
     text-align: left;
   }
+  .about-page {
+    width: min(100% - 40px, 680px);
+    padding-top: 48px;
+  }
+  .about-copy {
+    grid-template-columns: 1fr;
+    gap: 30px;
+    margin-top: 52px;
+  }
 }
 @media (max-width: 480px) {
   .site-header {
@@ -448,6 +639,12 @@ footer {
   }
   .artwork-frame img {
     transition: none;
+  }
+  .home-slideshow img {
+    transition: none;
+  }
+  .home-menu-overlay {
+    animation: none;
   }
 }
 

@@ -3,6 +3,7 @@ import crypto from "node:crypto";
 import Stripe from "stripe";
 import { validateCheckout } from "./_lib/checkout.js";
 import { getSupabaseAdmin } from "./_lib/supabase.js";
+import { ECOMMERCE_ENABLED } from "../src/config/features.js";
 
 export default async function handler(
   request: VercelRequest,
@@ -10,6 +11,8 @@ export default async function handler(
 ) {
   if (request.method !== "POST")
     return response.status(405).json({ error: "Method not allowed." });
+  if (!ECOMMERCE_ENABLED)
+    return response.status(503).json({ error: "Shop coming soon." });
   try {
     if (!process.env.STRIPE_SECRET_KEY || !process.env.SITE_URL)
       throw new Error("Checkout is not configured yet.");

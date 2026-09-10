@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1500" role="img" aria-labelledby="title description">
+  <title id="title">Portrait placeholder</title>
+  <desc id="description">A neutral placeholder for Reese Brady's portrait.</desc>
+  <rect width="1200" height="1500" fill="#d8d2c6"/>
+  <circle cx="600" cy="550" r="190" fill="#aaa296"/>
+  <path d="M250 1360c18-300 132-505 350-505s332 205 350 505" fill="#aaa296"/>
+</svg>
