@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect } from "react";
+import { useEffect } from "react";
 import { HomeHero } from "../components/home/HomeHero";
 import { HomePortfolio } from "../components/home/HomePortfolio";
 
@@ -25,13 +25,6 @@ export function ShopPage() {
       document.body.classList.remove("home-page-active");
       document.documentElement.classList.remove("home-scroll-active");
     };
-  }, []);
-
-  useLayoutEffect(() => {
-    if (window.location.hash === "#portfolio")
-      document
-        .getElementById("portfolio")
-        ?.scrollIntoView?.({ block: "start" });
   }, []);
 
   return (

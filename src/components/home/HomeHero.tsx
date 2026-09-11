@@ -36,6 +36,7 @@ export function HomeHero() {
           />
         ))}
       </div>
+      <p className="home-hero-wordmark">Reese Brady Art</p>
     </section>
   );
 }

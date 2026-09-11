@@ -85,6 +85,21 @@
 .home-slideshow img.is-active {
   opacity: 1;
 }
+.home-hero-wordmark {
+  position: absolute;
+  top: 15%;
+  left: 50%;
+  z-index: 2;
+  margin: 0;
+  color: #fff;
+  font-family: "Playfair Display", Georgia, serif;
+  font-size: clamp(1.45rem, 2.5vw, 2rem);
+  letter-spacing: 0.02em;
+  line-height: 1;
+  text-shadow: 0 2px 12px rgb(0 0 0 / 65%);
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
 .home-wordmark {
   font-family: "Playfair Display", Georgia, serif;
   font-size: clamp(1.2rem, 2vw, 1.55rem);
@@ -103,6 +118,10 @@
 }
 .responsive-site-header .menu-toggle {
   display: none;
+}
+.responsive-site-header {
+  position: sticky;
+  top: 0;
 }
 .menu-toggle span,
 .menu-close span {

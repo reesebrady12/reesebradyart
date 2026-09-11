@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type MouseEvent } from "react";
 import { Link, useLocation } from "wouter";
 import { ECOMMERCE_ENABLED } from "../config/features";
 import { useCart } from "../context/CartContext";
@@ -19,6 +19,16 @@ export function HomeNavigation({ className = "" }: { className?: string }) {
   const { itemCount } = useCart();
   const menuButton = useRef<HTMLButtonElement>(null);
   const closeButton = useRef<HTMLButtonElement>(null);
+
+  const returnHome = (event: MouseEvent<HTMLAnchorElement>) => {
+    if (location !== "/") return;
+    event.preventDefault();
+    window.history.pushState(null, "", "/");
+    const scrollingElement =
+      document.scrollingElement ?? document.documentElement;
+    scrollingElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  };
 
   useEffect(() => {
     if (!open) return;
@@ -60,7 +70,7 @@ export function HomeNavigation({ className = "" }: { className?: string }) {
   return (
     <>
       <header className={`site-header responsive-site-header ${className}`}>
-        <Link className="home-wordmark" href="/">
+        <Link className="home-wordmark" href="/" onClick={returnHome}>
           Reese Brady Art
         </Link>
         <nav className="desktop-navigation" aria-label="Main navigation">

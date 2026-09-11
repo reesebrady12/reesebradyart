@@ -22,6 +22,7 @@ import { PaintingsPage } from "./pages/admin/PaintingsPage";
 import { PaintingFormPage } from "./pages/admin/PaintingFormPage";
 import { OrdersPage } from "./pages/admin/OrdersPage";
 import { OrderDetailPage } from "./pages/admin/OrderDetailPage";
+import { ScrollRestoration } from "./components/ScrollRestoration";
 import "./App.css";
 
 function ProtectedAdminPage({ page }: { page: ReactNode }) {
@@ -37,6 +38,7 @@ export default function App() {
     <AuthProvider>
       <CatalogProvider>
         <CartProvider>
+          <ScrollRestoration />
           <Switch>
             <Route path="/admin/login" component={LoginPage} />
             <Route
