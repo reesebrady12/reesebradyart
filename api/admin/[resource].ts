@@ -14,6 +14,28 @@ const imageTypes = [
   "room",
   "other",
 ];
+const artworkBucket = "artwork";
+const artworkRoot = (paintingId: string) => `paintings/${paintingId}`;
+const storedArtworkRoots = (paintingId: string) => [
+  artworkRoot(paintingId),
+  `available/${paintingId}`,
+  `sold/${paintingId}`,
+  `projects/${paintingId}`,
+];
+const storedArtworkRoot = (path: string, paintingId: string) =>
+  storedArtworkRoots(paintingId).find((root) => path.startsWith(`${root}/`));
+const artworkUrl = (
+  storage: {
+    from: (bucket: string) => {
+      getPublicUrl: (path: string) => { data: { publicUrl: string } };
+    };
+  },
+  path?: string | null,
+) => {
+  if (!path) return "";
+  if (path.startsWith("/") || /^https?:\/\//i.test(path)) return path;
+  return storage.from(artworkBucket).getPublicUrl(path).data.publicUrl;
+};
 const cleanName = (name: string) =>
   name
     .toLowerCase()
@@ -100,53 +122,50 @@ export default async function handler(
           throw Object.assign(error, {
             status: error.code === "PGRST116" ? 404 : 500,
           });
-        const signImages = async (painting: typeof data) => {
-          const sign = async (path?: string | null) =>
-            path
-              ? ((
-                  await supabase.storage
-                    .from("paintings")
-                    .createSignedUrl(path, 3600)
-                ).data?.signedUrl ?? "")
-              : "";
-          const paintingImages = await Promise.all(
-            (painting.painting_images ?? []).map(
-              async (image: {
-                storage_path: string;
-                thumbnail_path?: string;
-                gallery_path?: string;
-                large_path?: string;
-                is_primary?: boolean;
-              }) => {
-                const [masterUrl, thumbnailUrl, galleryUrl, largeUrl] =
-                  await Promise.all([
-                    sign(image.storage_path),
-                    sign(image.thumbnail_path),
-                    sign(image.gallery_path),
-                    sign(image.large_path),
-                  ]);
-                return {
-                  ...image,
-                  public_url: galleryUrl || largeUrl || masterUrl,
-                  thumbnail_url: thumbnailUrl || galleryUrl || masterUrl,
-                  large_url: largeUrl || masterUrl,
-                  master_url: masterUrl,
-                };
-              },
-            ),
+        const attachImageUrls = (painting: typeof data) => {
+          const paintingImages = (painting.painting_images ?? []).map(
+            (image: {
+              storage_path: string;
+              thumbnail_path?: string;
+              gallery_path?: string;
+              large_path?: string;
+              is_primary?: boolean;
+            }) => {
+              const masterUrl = artworkUrl(
+                supabase.storage,
+                image.storage_path,
+              );
+              const thumbnailUrl = artworkUrl(
+                supabase.storage,
+                image.thumbnail_path,
+              );
+              const galleryUrl = artworkUrl(
+                supabase.storage,
+                image.gallery_path,
+              );
+              const largeUrl = artworkUrl(supabase.storage, image.large_path);
+              return {
+                ...image,
+                public_url: galleryUrl || largeUrl || masterUrl,
+                thumbnail_url: thumbnailUrl || galleryUrl || masterUrl,
+                large_url: largeUrl || masterUrl,
+                master_url: masterUrl,
+              };
+            },
           );
           return {
             ...painting,
             image:
-              paintingImages.find((image) => image.is_primary)?.public_url ??
-              painting.image,
+              paintingImages.find(
+                (image: { is_primary?: boolean }) => image.is_primary,
+              )?.public_url ?? artworkUrl(supabase.storage, painting.image),
             painting_images: paintingImages,
           };
         };
         return response.json(
           id
-            ? { painting: await signImages(data) }
-            : { paintings: await Promise.all(data.map(signImages)) },
+            ? { painting: attachImageUrls(data) }
+            : { paintings: data.map(attachImageUrls) },
         );
       }
       if (request.method === "POST") {
@@ -233,7 +252,7 @@ export default async function handler(
           if (
             imageError ||
             ((!publicationImages || publicationImages.length === 0) &&
-              !String(existingImage?.image ?? "").startsWith("/"))
+              !String(existingImage?.image ?? "").trim())
           )
             throw Object.assign(
               new Error("Add at least one artwork image before publishing."),
@@ -308,16 +327,39 @@ export default async function handler(
         return response.json({ painting: data });
       }
       if (request.method === "DELETE" && id) {
-        const { error } = await supabase
-          .from("products")
-          .update({
-            status: "archived",
-            archived_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", id);
-        if (error) throw error;
-        return response.json({ archived: true });
+        const deleted = await supabase.rpc("delete_artwork_record", {
+          p_painting_id: id,
+        });
+        if (deleted.error?.code === "23503") {
+          const archived = await supabase
+            .from("products")
+            .update({
+              status: "archived",
+              archived_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", id);
+          if (archived.error) throw archived.error;
+          return response.json({ archived: true });
+        }
+        if (deleted.error) throw deleted.error;
+
+        const paths = (deleted.data ?? [])
+          .map((row: { storage_path?: string }) => row.storage_path)
+          .filter((path: string | undefined): path is string => Boolean(path));
+        if (paths.length) {
+          const removed = await supabase.storage
+            .from(artworkBucket)
+            .remove(paths);
+          if (removed.error)
+            throw Object.assign(
+              new Error(
+                "Artwork was deleted, but its Storage files need cleanup.",
+              ),
+              { status: 502 },
+            );
+        }
+        return response.json({ deleted: true });
       }
     }
     if (resource === "orders") {
@@ -402,11 +444,12 @@ export default async function handler(
             new Error("Choose a supported image within the upload limit."),
             { status: 422 },
           );
-        const { count } = await supabase
+        const { data: painting } = await supabase
           .from("products")
-          .select("id", { count: "exact", head: true })
-          .eq("id", paintingId);
-        if (!count)
+          .select("id,category")
+          .eq("id", paintingId)
+          .maybeSingle();
+        if (!painting)
           throw Object.assign(new Error("Painting not found."), {
             status: 404,
           });
@@ -414,9 +457,9 @@ export default async function handler(
           version === "original"
             ? cleanName(filename).split(".").pop() || "image"
             : "webp";
-        const path = `paintings/${paintingId}/${version}/${assetId}.${extension}`;
+        const path = `${artworkRoot(paintingId)}/${version}/${assetId}.${extension}`;
         const { data, error } = await supabase.storage
-          .from("paintings")
+          .from(artworkBucket)
           .createSignedUploadUrl(path);
         if (error) throw error;
         return response.json({
@@ -429,10 +472,9 @@ export default async function handler(
       if (request.method === "POST" && request.query.action === "complete") {
         const body = request.body ?? {};
         const max = Number(process.env.MAX_IMAGE_UPLOAD_MB ?? 40) * 1024 * 1024;
+        const imageRoot = artworkRoot(body.painting_id);
         if (
-          !body.storage_path?.startsWith(
-            `paintings/${body.painting_id}/original/`,
-          ) ||
+          !body.storage_path?.startsWith(`${imageRoot}/original/`) ||
           body.storage_path.includes("..") ||
           !allowedTypes.includes(body.mime_type) ||
           !Number.isInteger(body.width) ||
@@ -458,8 +500,7 @@ export default async function handler(
         for (const [version, derivedPath] of derivedPaths) {
           if (
             typeof derivedPath !== "string" ||
-            derivedPath !==
-              `paintings/${body.painting_id}/${version}/${assetName}.webp` ||
+            derivedPath !== `${imageRoot}/${version}/${assetName}.webp` ||
             derivedPath.includes("..")
           )
             throw Object.assign(new Error("Invalid responsive image path."), {
@@ -469,7 +510,7 @@ export default async function handler(
         const pathParts = String(body.storage_path).split("/");
         const filename = pathParts.pop()!;
         const stored = await supabase.storage
-          .from("paintings")
+          .from(artworkBucket)
           .list(pathParts.join("/"), { search: filename, limit: 2 });
         if (
           stored.error ||
@@ -482,7 +523,7 @@ export default async function handler(
           const parts = derivedPath.split("/");
           const derivedName = parts.pop()!;
           const found = await supabase.storage
-            .from("paintings")
+            .from(artworkBucket)
             .list(parts.join("/"), { search: derivedName, limit: 2 });
           if (
             found.error ||
@@ -494,7 +535,7 @@ export default async function handler(
             );
         }
         const downloaded = await supabase.storage
-          .from("paintings")
+          .from(artworkBucket)
           .download(body.storage_path);
         if (downloaded.error || !downloaded.data)
           throw Object.assign(
@@ -510,7 +551,9 @@ export default async function handler(
           downloaded.data.size !== body.file_size ||
           !hasImageSignature(uploadedBytes, body.mime_type)
         ) {
-          await supabase.storage.from("paintings").remove([body.storage_path]);
+          await supabase.storage
+            .from(artworkBucket)
+            .remove([body.storage_path]);
           throw Object.assign(
             new Error(
               "The uploaded file content does not match its image type.",
@@ -548,7 +591,7 @@ export default async function handler(
           .single();
         if (error) {
           await supabase.storage
-            .from("paintings")
+            .from(artworkBucket)
             .remove([
               body.storage_path,
               ...derivedPaths.map(([, path]) => path),
@@ -560,11 +603,11 @@ export default async function handler(
             .from("products")
             .update({ image: body.storage_path })
             .eq("id", body.painting_id);
-        const signed = await supabase.storage
-          .from("paintings")
-          .createSignedUrl(data.storage_path, 3600);
         return response.status(201).json({
-          image: { ...data, public_url: signed.data?.signedUrl ?? "" },
+          image: {
+            ...data,
+            public_url: artworkUrl(supabase.storage, data.storage_path),
+          },
         });
       }
       if (request.method === "POST" && request.query.action === "discard") {
@@ -572,7 +615,7 @@ export default async function handler(
         if (
           typeof painting_id !== "string" ||
           typeof storage_path !== "string" ||
-          !storage_path.startsWith(`paintings/${painting_id}/`) ||
+          !storedArtworkRoot(storage_path, painting_id) ||
           storage_path.includes("..")
         )
           throw Object.assign(new Error("Invalid image path."), {
@@ -587,7 +630,7 @@ export default async function handler(
             status: 409,
           });
         const removed = await supabase.storage
-          .from("paintings")
+          .from(artworkBucket)
           .remove([storage_path]);
         if (removed.error) throw removed.error;
         return response.status(204).end();
@@ -659,6 +702,7 @@ export default async function handler(
           .select("*")
           .eq("id", id)
           .single();
+        if (error?.code === "PGRST116") return response.status(204).end();
         if (error)
           throw Object.assign(new Error("Image not found."), { status: 404 });
         const deleted = await supabase
@@ -667,7 +711,7 @@ export default async function handler(
           .eq("id", id);
         if (deleted.error) throw deleted.error;
         const removed = await supabase.storage
-          .from("paintings")
+          .from(artworkBucket)
           .remove(
             [
               image.storage_path,

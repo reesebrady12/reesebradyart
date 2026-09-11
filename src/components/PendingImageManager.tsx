@@ -16,11 +16,15 @@ export function PendingImageManager({
   setImages,
   title,
   disabled,
+  hasStoredImages,
+  onMakePrimary,
 }: {
   images: PendingPaintingImage[];
   setImages: Dispatch<SetStateAction<PendingPaintingImage[]>>;
   title: string;
   disabled: boolean;
+  hasStoredImages: boolean;
+  onMakePrimary: () => void;
 }) {
   const input = useRef<HTMLInputElement>(null);
   const [dragged, setDragged] = useState<number | null>(null);
@@ -39,8 +43,11 @@ export function PendingImageManager({
           ...inspected,
           altText: title ? `${title} artwork view` : "",
           imageType:
-            additions.length === 0 && images.length === 0 ? "front" : "other",
-          isPrimary: additions.length === 0 && images.length === 0,
+            additions.length === 0 && images.length === 0 && !hasStoredImages
+              ? "front"
+              : "other",
+          isPrimary:
+            additions.length === 0 && images.length === 0 && !hasStoredImages,
           status: "ready",
           progress: 0,
         });
@@ -78,6 +85,7 @@ export function PendingImageManager({
 
   return (
     <section className="pending-images">
+      {hasStoredImages && <h3>New images</h3>}
       <div
         className={`drop-zone ${disabled ? "busy" : ""}`}
         role="button"
@@ -165,14 +173,15 @@ export function PendingImageManager({
                 <button
                   type="button"
                   disabled={disabled || image.isPrimary}
-                  onClick={() =>
+                  onClick={() => {
+                    onMakePrimary();
                     setImages((current) =>
                       current.map((entry) => ({
                         ...entry,
                         isPrimary: entry.localId === image.localId,
                       })),
-                    )
-                  }
+                    );
+                  }}
                 >
                   {image.isPrimary ? "Primary image" : "Make primary"}
                 </button>

@@ -7,8 +7,15 @@ import {
 } from "react";
 import { products as fallback } from "../data/products";
 import type { Product } from "../types";
+import { getArtworkPublicUrl } from "../lib/artwork-storage";
 
-const catalogFallback = import.meta.env.VITE_SUPABASE_URL ? [] : fallback;
+const fallbackProducts = fallback.map((product) => ({
+  ...product,
+  image: getArtworkPublicUrl(product.image),
+}));
+const catalogFallback = import.meta.env.VITE_SUPABASE_URL
+  ? []
+  : fallbackProducts;
 
 type DbProduct = Record<string, unknown> & {
   painting_images?: Record<string, unknown>[];
@@ -21,19 +28,34 @@ export const mapProduct = (row: DbProduct): Product => ({
   slug: String(row.slug),
   name: String(row.title),
   description: String(row.description ?? ""),
-  image: String(
-    (row.painting_images?.[0]?.public_url ?? row.image) ||
-      "/art/golden-hour.svg",
+  image: getArtworkPublicUrl(
+    String(
+      row.painting_images?.[0]?.gallery_path ??
+        row.painting_images?.[0]?.large_path ??
+        row.painting_images?.[0]?.storage_path ??
+        row.image ??
+        "",
+    ),
   ),
   additionalImages: row.painting_images
     ?.slice(1)
-    .map((image) => String(image.public_url)),
+    .map((image) =>
+      getArtworkPublicUrl(
+        String(image.gallery_path ?? image.large_path ?? image.storage_path),
+      ),
+    ),
   images: row.painting_images?.map((image) => ({
     id: String(image.id),
-    url: String(image.public_url),
-    thumbnailUrl: String(image.thumbnail_url || image.public_url),
-    largeUrl: String(image.large_url || image.public_url),
-    masterUrl: String(image.master_url || image.large_url || image.public_url),
+    url: getArtworkPublicUrl(
+      String(image.gallery_path ?? image.large_path ?? image.storage_path),
+    ),
+    thumbnailUrl: getArtworkPublicUrl(
+      String(image.thumbnail_path ?? image.gallery_path ?? image.storage_path),
+    ),
+    largeUrl: getArtworkPublicUrl(
+      String(image.large_path ?? image.storage_path),
+    ),
+    masterUrl: getArtworkPublicUrl(String(image.storage_path)),
     alt: String(image.alt_text || row.title),
     type: String(image.image_type),
     width: image.width ? Number(image.width) : undefined,
@@ -70,7 +92,10 @@ export const mapProduct = (row: DbProduct): Product => ({
     inventory: variant.inventory === null ? null : Number(variant.inventory),
   })),
 });
-const CatalogContext = createContext({ products: fallback, loading: false });
+const CatalogContext = createContext({
+  products: fallbackProducts,
+  loading: false,
+});
 export function CatalogProvider({ children }: { children: ReactNode }) {
   const [products, setProducts] = useState(catalogFallback);
   const [loading, setLoading] = useState(true);

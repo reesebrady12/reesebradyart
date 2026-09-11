@@ -17,6 +17,20 @@ const portfolioMigration = readFileSync(
   resolve(root, "supabase/migrations/20260811000000_portfolio_categories.sql"),
   "utf8",
 );
+const artworkStorageMigration = readFileSync(
+  resolve(
+    root,
+    "supabase/migrations/20260910000000_public_artwork_storage.sql",
+  ),
+  "utf8",
+);
+const artworkLifecycleMigration = readFileSync(
+  resolve(
+    root,
+    "supabase/migrations/20260911000000_artwork_image_lifecycle.sql",
+  ),
+  "utf8",
+);
 const browserSource = [
   "src/App.tsx",
   "src/lib/supabase.ts",
@@ -48,16 +62,34 @@ describe("security invariants", () => {
     );
   });
 
-  it("keeps storage private and restricts writes to admins", () => {
-    expect(migration).toContain("values ('paintings','paintings',false");
-    expect(migration).toContain("admins upload painting files");
-    expect(migration).toContain("admins delete painting files");
+  it("makes portfolio artwork public while restricting writes to admins", () => {
+    expect(artworkStorageMigration).toContain(
+      "'artwork',\n  'artwork',\n  true",
+    );
+    expect(artworkStorageMigration).toContain("admins upload artwork files");
+    expect(artworkStorageMigration).toContain("admins delete artwork files");
   });
 
   it("enforces one primary image and atomic image ordering", () => {
     expect(migration).toContain("one_primary_image_per_painting");
     expect(migration).toContain("reorder_painting_images");
     expect(migration).toContain("set_primary_painting_image");
+  });
+
+  it("deletes unused artwork records atomically before storage cleanup", () => {
+    expect(artworkLifecycleMigration).toContain(
+      "create or replace function delete_artwork_record",
+    );
+    expect(artworkLifecycleMigration).toContain("delete from painting_images");
+    expect(adminHandler).toContain('.rpc("delete_artwork_record"');
+    expect(adminHandler).toContain(".remove(paths)");
+  });
+
+  it("uses status-independent storage paths for new artwork uploads", () => {
+    expect(adminHandler).toContain(
+      "const artworkRoot = (paintingId: string) => `paintings/${paintingId}`",
+    );
+    expect(adminHandler).not.toContain("const artworkFolder");
   });
 
   it("atomically reserves originals before payment", () => {

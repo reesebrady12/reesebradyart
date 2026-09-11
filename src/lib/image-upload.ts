@@ -1,4 +1,5 @@
 import { adminApi } from "./admin-api";
+import { ARTWORK_BUCKET } from "./artwork-storage";
 import { supabase } from "./supabase";
 
 export const artworkImageTypes = [
@@ -123,7 +124,7 @@ export async function uploadPaintingImage(
     for (let index = 0; index < versions.length; index++) {
       report("uploading", 20 + index * 17);
       const upload = await supabase.storage
-        .from("paintings")
+        .from(ARTWORK_BUCKET)
         .uploadToSignedUrl(
           signedUploads[index].path,
           signedUploads[index].token,

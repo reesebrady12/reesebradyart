@@ -1,14 +1,10 @@
-import { useRef, useState, type DragEvent } from "react";
-import { adminApi } from "../lib/admin-api";
-import {
-  artworkImageTypes,
-  inspectPaintingFile,
-  uploadPaintingImage,
-  type PendingPaintingImage,
-} from "../lib/image-upload";
-type ImageRow = {
+import { useState, type DragEvent } from "react";
+import { artworkImageTypes } from "../lib/image-upload";
+
+export type StoredPaintingImage = {
   id: string;
   storage_path: string;
+  public_url?: string;
   alt_text: string;
   image_type: string;
   sort_order: number;
@@ -17,199 +13,118 @@ type ImageRow = {
   height: number;
   file_size: number;
   mime_type: string;
-  public_url?: string;
 };
+
 export function ImageManager({
-  paintingId,
   images,
+  disabled,
   onChange,
+  onRemove,
+  onMakePrimary,
 }: {
-  paintingId: string;
-  images: ImageRow[];
-  onChange: () => void;
+  images: StoredPaintingImage[];
+  disabled: boolean;
+  onChange: (images: StoredPaintingImage[]) => void;
+  onRemove: (image: StoredPaintingImage) => void;
+  onMakePrimary: () => void;
 }) {
-  const input = useRef<HTMLInputElement>(null);
-  const [busy, setBusy] = useState(false);
-  const [progress, setProgress] = useState("");
-  const [error, setError] = useState("");
   const [dragged, setDragged] = useState<number | null>(null);
-  const upload = async (files: File[]) => {
-    setBusy(true);
-    setError("");
-    try {
-      for (let index = 0; index < files.length; index++) {
-        const file = files[index];
-        setProgress(`Uploading ${index + 1} of ${files.length}: ${file.name}`);
-        const inspected = await inspectPaintingFile(file);
-        const pending: PendingPaintingImage = {
-          localId: crypto.randomUUID(),
-          file,
-          previewUrl: inspected.previewUrl,
-          width: inspected.width,
-          height: inspected.height,
-          altText: file.name.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " "),
-          imageType: images.length + index === 0 ? "front" : "other",
-          isPrimary: images.length + index === 0,
-          status: "ready",
-          progress: 0,
-        };
-        try {
-          await uploadPaintingImage(
-            paintingId,
-            pending,
-            images.length + index,
-            (status, percent) =>
-              setProgress(
-                `${status === "processing" ? "Preparing" : "Uploading"} ${index + 1} of ${files.length}: ${file.name} (${percent}%)`,
-              ),
-          );
-        } finally {
-          URL.revokeObjectURL(inspected.previewUrl);
-        }
-      }
-      onChange();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Upload failed.");
-    } finally {
-      setBusy(false);
-      setProgress("");
-    }
-  };
-  const drop = (event: DragEvent) => {
-    event.preventDefault();
-    void upload([...event.dataTransfer.files]);
-  };
-  const update = async (image: ImageRow, changes: Partial<ImageRow>) => {
-    await adminApi(`/api/admin/images?id=${image.id}`, {
-      method: "PATCH",
-      body: JSON.stringify({ ...image, painting_id: paintingId, ...changes }),
-    });
-    onChange();
-  };
-  const reorder = async (from: number, to: number) => {
-    const next = [...images];
+  const ordered = [...images].sort((a, b) => a.sort_order - b.sort_order);
+
+  const update = (id: string, changes: Partial<StoredPaintingImage>) =>
+    onChange(
+      ordered.map((image) =>
+        image.id === id ? { ...image, ...changes } : image,
+      ),
+    );
+
+  const reorder = (from: number, to: number) => {
+    const next = [...ordered];
     const [moved] = next.splice(from, 1);
     next.splice(to, 0, moved);
-    setBusy(true);
-    setError("");
-    try {
-      await adminApi("/api/admin/images?action=reorder", {
-        method: "PATCH",
-        body: JSON.stringify({
-          painting_id: paintingId,
-          image_ids: next.map((image) => image.id),
-        }),
-      });
-      onChange();
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Reorder failed.");
-    } finally {
-      setBusy(false);
-      setDragged(null);
-    }
+    onChange(next.map((image, index) => ({ ...image, sort_order: index })));
+    setDragged(null);
   };
+
+  const makePrimary = (id: string) => {
+    onMakePrimary();
+    onChange(
+      ordered.map((image) => ({ ...image, is_primary: image.id === id })),
+    );
+  };
+
+  const drop = (event: DragEvent, index: number) => {
+    event.preventDefault();
+    if (!disabled && dragged !== null) reorder(dragged, index);
+  };
+
+  if (!ordered.length) return null;
+
   return (
-    <section className="image-manager">
-      <div
-        className={`drop-zone ${busy ? "busy" : ""}`}
-        onDragOver={(e) => e.preventDefault()}
-        onDrop={drop}
-        onClick={() => !busy && input.current?.click()}
-        role="button"
-        tabIndex={0}
-        aria-label="Upload painting images"
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            input.current?.click();
-          }
-        }}
-      >
-        <input
-          ref={input}
-          hidden
-          type="file"
-          multiple
-          accept="image/jpeg,image/png,image/webp,image/avif"
-          onChange={(e) => void upload([...(e.target.files ?? [])])}
-        />
-        <strong aria-live="polite">
-          {busy ? progress : "Drop artwork images here"}
-        </strong>
-        <span>or choose files · JPEG, PNG, WebP · up to 40 MB each</span>
-      </div>
-      {error && (
-        <p className="form-error" role="alert">
-          {error}
-        </p>
-      )}
+    <section className="image-manager" aria-labelledby="stored-images-heading">
+      <h3 id="stored-images-heading">Saved images</h3>
+      <p className="panel-help">
+        Changes to these images are applied when you save the artwork.
+      </p>
       <div className="image-admin-grid">
-        {[...images]
-          .sort((a, b) => a.sort_order - b.sort_order)
-          .map((image, index) => {
-            const url = image.public_url ?? "";
-            return (
-              <article
-                key={image.id}
-                draggable
-                onDragStart={() => setDragged(index)}
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={() => dragged !== null && void reorder(dragged, index)}
+        {ordered.map((image, index) => (
+          <article
+            key={image.id}
+            draggable={!disabled}
+            onDragStart={() => setDragged(index)}
+            onDragOver={(event) => event.preventDefault()}
+            onDrop={(event) => drop(event, index)}
+          >
+            <img src={image.public_url ?? ""} alt={image.alt_text} />
+            <p>
+              {image.is_primary && <strong>Cover image · </strong>}
+              {image.width} × {image.height} ·{" "}
+              {(image.file_size / 1024 / 1024).toFixed(1)} MB
+            </p>
+            <label>
+              Alt text
+              <input
+                value={image.alt_text}
+                disabled={disabled}
+                onChange={(event) =>
+                  update(image.id, { alt_text: event.target.value })
+                }
+              />
+            </label>
+            <label>
+              Image type
+              <select
+                value={image.image_type}
+                disabled={disabled}
+                onChange={(event) =>
+                  update(image.id, { image_type: event.target.value })
+                }
               >
-                <img src={url} alt={image.alt_text} />
-                <p>
-                  {image.width} × {image.height} ·{" "}
-                  {(image.file_size / 1024 / 1024).toFixed(1)} MB
-                </p>
-                <label>
-                  Alt text
-                  <input
-                    value={image.alt_text}
-                    onChange={(e) =>
-                      void update(image, { alt_text: e.target.value })
-                    }
-                  />
-                </label>
-                <label>
-                  Image type
-                  <select
-                    value={image.image_type}
-                    onChange={(e) =>
-                      void update(image, { image_type: e.target.value })
-                    }
-                  >
-                    {artworkImageTypes.map(([type, label]) => (
-                      <option key={type} value={type}>
-                        {label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <div className="image-actions">
-                  <button
-                    type="button"
-                    disabled={image.is_primary}
-                    onClick={() => void update(image, { is_primary: true })}
-                  >
-                    {image.is_primary ? "Cover image" : "Make cover"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      if (confirm("Remove this image?")) {
-                        await adminApi(`/api/admin/images?id=${image.id}`, {
-                          method: "DELETE",
-                        });
-                        onChange();
-                      }
-                    }}
-                  >
-                    Remove
-                  </button>
-                </div>
-              </article>
-            );
-          })}
+                {artworkImageTypes.map(([type, label]) => (
+                  <option key={type} value={type}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <div className="image-actions">
+              <button
+                type="button"
+                disabled={disabled || image.is_primary}
+                onClick={() => makePrimary(image.id)}
+              >
+                {image.is_primary ? "Cover image" : "Make cover"}
+              </button>
+              <button
+                type="button"
+                disabled={disabled}
+                onClick={() => onRemove(image)}
+              >
+                Remove on save
+              </button>
+            </div>
+          </article>
+        ))}
       </div>
     </section>
   );

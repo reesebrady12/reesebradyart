@@ -65,41 +65,14 @@ export default async function handler(
           .filter(Boolean),
       ),
     ].sort((a, b) => Number(b) - Number(a));
-    const storage = database.storage.from("paintings");
-    const sign = async (path?: string | null) =>
-      path
-        ? ((await storage.createSignedUrl(path, 3600)).data?.signedUrl ?? "")
-        : "";
-    const products = await Promise.all(
-      data.map(async (product) => ({
-        ...product,
-        painting_images: await Promise.all(
-          [...product.painting_images]
-            .sort(
-              (a, b) =>
-                Number(b.is_primary) - Number(a.is_primary) ||
-                a.sort_order - b.sort_order,
-            )
-            .map(async (image) => {
-              const [masterUrl, thumbnailUrl, galleryUrl, largeUrl] =
-                await Promise.all([
-                  sign(image.storage_path),
-                  sign(image.thumbnail_path),
-                  sign(image.gallery_path),
-                  sign(image.large_path),
-                ]);
-              return {
-                ...image,
-                public_url: galleryUrl || largeUrl || masterUrl,
-                thumbnail_url: thumbnailUrl || galleryUrl || masterUrl,
-                gallery_url: galleryUrl || largeUrl || masterUrl,
-                large_url: largeUrl || masterUrl,
-                master_url: masterUrl,
-              };
-            }),
-        ),
-      })),
-    );
+    const products = data.map((product) => ({
+      ...product,
+      painting_images: [...product.painting_images].sort(
+        (a, b) =>
+          Number(b.is_primary) - Number(a.is_primary) ||
+          a.sort_order - b.sort_order,
+      ),
+    }));
     response.setHeader(
       "Cache-Control",
       "public, max-age=60, stale-while-revalidate=300",

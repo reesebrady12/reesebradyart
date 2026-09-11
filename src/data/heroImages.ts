@@ -1,5 +1,5 @@
 export type HeroImage = {
-  src: string;
+  path: string;
   position?: string;
 };
 
@@ -7,11 +7,10 @@ export type HeroImage = {
 // Add, remove, reorder, or replace entries here. `position` is passed directly
 // to CSS object-position, so it can be used to fine-tune each image's crop.
 export const heroImages: HeroImage[] = [
-  { src: "/art/anders.HEIC", position: "center" },
-  { src: "/art/carl.HEIC", position: "center top%" },
-  { src: "/art/fam.HEIC", position: "center top%" },
-  { src: "/art/golden.HEIC", position: "center top%" },
-  { src: "/art/josie.HEIC", position: "center top%" },
-  { src: "/art/fam.HEIC", position: "center top%" },
-  { src: "/art/alyssa.HEIC", position: "center top%" },
+  { path: "home/bigsur2.jpeg", position: "center" },
+  { path: "home/carl.jpeg", position: "center top" },
+  { path: "home/wildflowers.jpeg", position: "center top" },
+  { path: "home/fam.jpeg", position: "center top" },
+  { path: "home/joe.jpeg", position: "center top" },
+  { path: "home/anders.jpeg", position: "center top" },
 ];

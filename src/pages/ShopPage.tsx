@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { HomeNavigation } from "../components/HomeNavigation";
 import { heroImages } from "../data/heroImages";
+import { getArtworkPublicUrl } from "../lib/artwork-storage";
 
 export function ShopPage() {
   const [activeImage, setActiveImage] = useState(0);
@@ -16,7 +17,7 @@ export function ShopPage() {
       const nextIndex = (activeImage + 1) % heroImages.length;
       const nextImage = new Image();
       nextImage.onload = () => setActiveImage(nextIndex);
-      nextImage.src = heroImages[nextIndex].src;
+      nextImage.src = getArtworkPublicUrl(heroImages[nextIndex].path);
       timeout = setTimeout(queueNextImage, 5000);
     };
 
@@ -35,9 +36,9 @@ export function ShopPage() {
       <div className="home-slideshow" aria-hidden="true">
         {heroImages.map((image, index) => (
           <img
-            key={image.src}
+            key={image.path}
             className={index === activeImage ? "is-active" : ""}
-            src={image.src}
+            src={getArtworkPublicUrl(image.path)}
             alt=""
             style={{ objectPosition: image.position ?? "center" }}
             loading={index === 0 ? "eager" : "lazy"}

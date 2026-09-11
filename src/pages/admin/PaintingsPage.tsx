@@ -80,7 +80,7 @@ export function PaintingsPage() {
   const remove = async (painting: Painting) => {
     if (
       !confirm(
-        `Delete “${painting.title}”? Products used by orders will be archived instead.`,
+        `Delete “${painting.title}” and all of its stored images? Artwork used by an order will be archived instead.`,
       )
     )
       return;

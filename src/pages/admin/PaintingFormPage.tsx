@@ -7,7 +7,10 @@ import {
   type MouseEvent,
 } from "react";
 import { Link, useLocation, useParams } from "wouter";
-import { ImageManager } from "../../components/ImageManager";
+import {
+  ImageManager,
+  type StoredPaintingImage,
+} from "../../components/ImageManager";
 import { PendingImageManager } from "../../components/PendingImageManager";
 import {
   VariantsEditor,
@@ -20,19 +23,7 @@ import {
 } from "../../lib/image-upload";
 import { artworkCategories, artworkMediums } from "../../lib/artwork";
 
-type StoredImage = {
-  id: string;
-  public_url?: string;
-  alt_text: string;
-  image_type: string;
-  sort_order: number;
-  is_primary: boolean;
-  storage_path: string;
-  width: number;
-  height: number;
-  file_size: number;
-  mime_type: string;
-};
+type StoredImage = StoredPaintingImage;
 type Painting = Record<string, unknown> & {
   id: string;
   title: string;
@@ -40,6 +31,7 @@ type Painting = Record<string, unknown> & {
   painting_images: StoredImage[];
   product_variants: EditableVariant[];
 };
+type ArtworkStatus = "draft" | "published" | "archived" | "sold";
 
 const blank = {
   title: "",
@@ -80,6 +72,7 @@ export function PaintingFormPage() {
   const [pendingImages, setPendingImages] = useState<PendingPaintingImage[]>(
     [],
   );
+  const [removedImages, setRemovedImages] = useState<StoredImage[]>([]);
   const [loading, setLoading] = useState(Boolean(id));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -103,6 +96,7 @@ export function PaintingFormPage() {
         ...data.painting,
         price_dollars: (data.painting.price_in_cents / 100).toFixed(2),
       });
+      setRemovedImages([]);
       dirty.current = false;
     } catch (reason) {
       setError(
@@ -186,6 +180,8 @@ export function PaintingFormPage() {
     const stored = (form.painting_images ?? []) as StoredImage[];
     if (!stored.length && !pendingImages.length)
       next.images = "Add at least one painting image.";
+    if (stored.some((image) => !image.alt_text.trim()))
+      next.images = "Add alt text to every image before publishing.";
     if (pendingImages.some((image) => !image.altText.trim()))
       next.images = "Add alt text to every image before publishing.";
     setFields(next);
@@ -196,10 +192,10 @@ export function PaintingFormPage() {
     return true;
   };
 
-  const save = async (status: "draft" | "published", event?: FormEvent) => {
+  const save = async (status: ArtworkStatus, event?: FormEvent) => {
     event?.preventDefault();
     if (saving) return;
-    if (status === "published" && !validateForPublish()) return;
+    if (["published", "sold"].includes(status) && !validateForPublish()) return;
     setSaving(true);
     setError("");
     setSaved("");
@@ -222,14 +218,12 @@ export function PaintingFormPage() {
         setCreatedId(targetId);
         draftExists = true;
         setSaved("Draft record created. Uploading artwork images…");
-      } else if (status === "draft") {
-        await adminApi(`/api/admin/paintings?id=${targetId}`, {
-          method: "PATCH",
-          body: JSON.stringify(payload),
-        });
       }
 
       const uploadedIds: string[] = [];
+      const storedImages = [...((form.painting_images ?? []) as StoredImage[])]
+        .sort((a, b) => a.sort_order - b.sort_order)
+        .map((image, index) => ({ ...image, sort_order: index }));
       for (let index = 0; index < pendingImages.length; index++) {
         const pending = pendingImages[index];
         if (pending.databaseId) {
@@ -239,7 +233,7 @@ export function PaintingFormPage() {
         const databaseId = await uploadPaintingImage(
           targetId,
           pending,
-          index,
+          storedImages.length + index,
           (imageStatus, progress) =>
             setPendingImages((current) =>
               current.map((image) =>
@@ -259,41 +253,72 @@ export function PaintingFormPage() {
         );
       }
 
-      if (uploadedIds.length) {
+      for (const image of storedImages) {
+        await adminApi(`/api/admin/images?id=${image.id}`, {
+          method: "PATCH",
+          body: JSON.stringify({
+            painting_id: targetId,
+            alt_text: image.alt_text,
+            image_type: image.image_type,
+            sort_order: image.sort_order,
+            is_primary: image.is_primary,
+          }),
+        });
+      }
+
+      for (const image of removedImages) {
+        await adminApi(`/api/admin/images?id=${image.id}`, {
+          method: "DELETE",
+        });
+      }
+
+      const orderedIds = [
+        ...storedImages.map((image) => image.id),
+        ...uploadedIds,
+      ];
+      if (orderedIds.length) {
         await adminApi("/api/admin/images?action=reorder", {
           method: "PATCH",
           body: JSON.stringify({
             painting_id: targetId,
-            image_ids: uploadedIds,
+            image_ids: orderedIds,
           }),
         });
-        const primaryIndex = Math.max(
-          0,
-          pendingImages.findIndex((image) => image.isPrimary),
+        const pendingPrimaryIndex = pendingImages.findIndex(
+          (image) => image.isPrimary,
         );
-        const primary = pendingImages[primaryIndex];
-        if (primary && uploadedIds[primaryIndex])
-          await adminApi(`/api/admin/images?id=${uploadedIds[primaryIndex]}`, {
-            method: "PATCH",
-            body: JSON.stringify({
-              painting_id: targetId,
-              alt_text: primary.altText,
-              image_type: primary.imageType,
-              sort_order: primaryIndex,
-              is_primary: true,
-            }),
-          });
+        if (pendingPrimaryIndex >= 0 && uploadedIds[pendingPrimaryIndex]) {
+          const primary = pendingImages[pendingPrimaryIndex];
+          await adminApi(
+            `/api/admin/images?id=${uploadedIds[pendingPrimaryIndex]}`,
+            {
+              method: "PATCH",
+              body: JSON.stringify({
+                painting_id: targetId,
+                alt_text: primary.altText,
+                image_type: primary.imageType,
+                sort_order: storedImages.length + pendingPrimaryIndex,
+                is_primary: true,
+              }),
+            },
+          );
+        }
       }
 
-      if (status === "published") {
-        await adminApi(`/api/admin/paintings?id=${targetId}`, {
-          method: "PATCH",
-          body: JSON.stringify({ ...payload, status: "published" }),
-        });
-      }
+      await adminApi(`/api/admin/paintings?id=${targetId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ ...payload, status }),
+      });
       dirty.current = false;
       pendingImages.forEach((image) => URL.revokeObjectURL(image.previewUrl));
-      navigate(`/admin/paintings/${targetId}/edit`);
+      setPendingImages([]);
+      setRemovedImages([]);
+      if (id) {
+        await load();
+        setSaved("Artwork and images saved.");
+      } else {
+        navigate(`/admin/paintings/${targetId}/edit`);
+      }
     } catch (reason) {
       const message =
         reason instanceof Error
@@ -379,7 +404,12 @@ export function PaintingFormPage() {
 
       <form
         className="painting-form painting-create-layout"
-        onSubmit={(event) => void save("draft", event)}
+        onSubmit={(event) =>
+          void save(
+            editing ? (String(form.status) as ArtworkStatus) : "draft",
+            event,
+          )
+        }
       >
         <div className="painting-form-main">
           <section className="form-panel">
@@ -505,20 +535,52 @@ export function PaintingFormPage() {
               2400px WebP versions are generated for fast browsing and detailed
               viewing.
             </p>
-            {id && paintingId ? (
+            {paintingId && storedImages.length > 0 && (
               <ImageManager
-                paintingId={paintingId}
                 images={storedImages}
-                onChange={load}
-              />
-            ) : (
-              <PendingImageManager
-                images={pendingImages}
-                setImages={updatePending}
-                title={String(form.title ?? "")}
                 disabled={saving}
+                onChange={(images) => {
+                  set("painting_images", images);
+                }}
+                onRemove={(image) => {
+                  const remaining = storedImages.filter(
+                    (entry) => entry.id !== image.id,
+                  );
+                  if (image.is_primary && remaining[0])
+                    remaining[0] = { ...remaining[0], is_primary: true };
+                  if (image.is_primary && !remaining.length)
+                    updatePending((current) =>
+                      current.map((pending, index) => ({
+                        ...pending,
+                        isPrimary: index === 0,
+                      })),
+                    );
+                  setRemovedImages((current) => [...current, image]);
+                  set("painting_images", remaining);
+                }}
+                onMakePrimary={() =>
+                  updatePending((current) =>
+                    current.map((image) => ({ ...image, isPrimary: false })),
+                  )
+                }
               />
             )}
+            <PendingImageManager
+              images={pendingImages}
+              setImages={updatePending}
+              title={String(form.title ?? "")}
+              disabled={saving}
+              hasStoredImages={storedImages.length > 0}
+              onMakePrimary={() =>
+                set(
+                  "painting_images",
+                  storedImages.map((image) => ({
+                    ...image,
+                    is_primary: false,
+                  })),
+                )
+              }
+            />
             {fields.images && <p className="field-error">{fields.images}</p>}
           </section>
 
@@ -666,7 +728,7 @@ export function PaintingFormPage() {
               className="secondary-button"
               disabled={saving}
             >
-              {saving ? "Saving…" : "Save draft"}
+              {saving ? "Saving…" : editing ? "Save changes" : "Save draft"}
             </button>
             <button
               type="button"

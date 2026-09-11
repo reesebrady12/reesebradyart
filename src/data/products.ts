@@ -9,7 +9,7 @@ export const products: Product[] = [
     name: "Golden Hour Study",
     description:
       "A quiet study of late-afternoon light moving across an open landscape.",
-    image: "/art/golden-hour.svg",
+    image: "paintings/original-golden-hour/gallery/golden-hour.webp",
     type: "original",
     category: "available",
     purchasable: true,
@@ -28,7 +28,7 @@ export const products: Product[] = [
     name: "Still Water",
     description:
       "Soft color, reflected sky, and the calm geometry of the shoreline.",
-    image: "/art/still-water.svg",
+    image: "paintings/original-still-water/gallery/still-water.webp",
     type: "original",
     category: "available",
     purchasable: true,
@@ -46,7 +46,7 @@ export const products: Product[] = [
     name: "Wild Flowers",
     description:
       "An archival fine-art print made from the original floral study.",
-    image: "/art/wild-flowers.svg",
+    image: "paintings/print-wild-flowers/gallery/wild-flowers.webp",
     type: "print",
     category: "available",
     purchasable: true,
@@ -66,7 +66,7 @@ export const products: Product[] = [
     name: "Blue Morning",
     description:
       "A museum-quality print celebrating the cool stillness just before sunrise.",
-    image: "/art/blue-morning.svg",
+    image: "paintings/print-blue-morning/gallery/blue-morning.webp",
     type: "print",
     category: "available",
     purchasable: true,
