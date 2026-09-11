@@ -44,7 +44,8 @@ const cleanName = (name: string) =>
     .slice(-100);
 const maximumImageBytes = () => {
   const configured = Number(process.env.MAX_IMAGE_UPLOAD_MB ?? 40);
-  const megabytes = Number.isFinite(configured) && configured > 0 ? configured : 40;
+  const megabytes =
+    Number.isFinite(configured) && configured > 0 ? configured : 40;
   return Math.floor(megabytes * 1024 * 1024);
 };
 const hasImageSignature = (bytes: Uint8Array, mimeType: string) => {
@@ -129,9 +130,10 @@ export default async function handler(
           });
         const attachImageUrls = (painting: typeof data) => {
           if (!painting || typeof painting !== "object") return null;
-          const paintingImages = (Array.isArray(painting.painting_images)
-            ? painting.painting_images
-            : []
+          const paintingImages = (
+            Array.isArray(painting.painting_images)
+              ? painting.painting_images
+              : []
           ).map(
             (image: {
               storage_path: string;
@@ -180,9 +182,7 @@ export default async function handler(
               .map(attachImageUrls)
               .filter((painting: unknown) => painting !== null);
         return response.json(
-          id
-            ? { painting: attachImageUrls(data) }
-            : { paintings },
+          id ? { painting: attachImageUrls(data) } : { paintings },
         );
       }
       if (request.method === "POST") {

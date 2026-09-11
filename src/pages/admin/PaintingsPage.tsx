@@ -38,9 +38,8 @@ export function PaintingsPage() {
         if (!Array.isArray(data.paintings))
           throw new Error("The painting list returned an invalid response.");
         setPaintings(
-          data.paintings.filter(
-            (painting): painting is Painting =>
-              Boolean(painting && typeof painting === "object"),
+          data.paintings.filter((painting): painting is Painting =>
+            Boolean(painting && typeof painting === "object"),
           ),
         );
         setError("");

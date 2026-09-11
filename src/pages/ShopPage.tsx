@@ -1,52 +1,22 @@
-import { useEffect, useState } from "react";
-import { HomeNavigation } from "../components/HomeNavigation";
-import { heroImages } from "../data/heroImages";
-import { getArtworkPublicUrl } from "../lib/artwork-storage";
+import { useEffect } from "react";
+import { HomeHero } from "../components/home/HomeHero";
+import { HomePortfolio } from "../components/home/HomePortfolio";
 
 export function ShopPage() {
-  const [activeImage, setActiveImage] = useState(0);
-
   useEffect(() => {
     document.body.classList.add("home-page-active");
-    const reducedMotion = window.matchMedia?.(
-      "(prefers-reduced-motion: reduce)",
-    ).matches;
-    let timeout: ReturnType<typeof setTimeout> | undefined;
-
-    const queueNextImage = () => {
-      const nextIndex = (activeImage + 1) % heroImages.length;
-      const nextImage = new Image();
-      nextImage.onload = () => setActiveImage(nextIndex);
-      nextImage.src = getArtworkPublicUrl(heroImages[nextIndex].path);
-      timeout = setTimeout(queueNextImage, 5000);
-    };
-
-    if (!reducedMotion && heroImages.length > 1) {
-      timeout = setTimeout(queueNextImage, 5000);
-    }
+    document.documentElement.classList.add("home-scroll-active");
 
     return () => {
       document.body.classList.remove("home-page-active");
-      if (timeout) clearTimeout(timeout);
+      document.documentElement.classList.remove("home-scroll-active");
     };
-  }, [activeImage]);
+  }, []);
 
   return (
-    <section className="home-hero" aria-label="Reese Brady Art">
-      <div className="home-slideshow" aria-hidden="true">
-        {heroImages.map((image, index) => (
-          <img
-            key={image.path}
-            className={index === activeImage ? "is-active" : ""}
-            src={getArtworkPublicUrl(image.path)}
-            alt=""
-            style={{ objectPosition: image.position ?? "center" }}
-            loading={index === 0 ? "eager" : "lazy"}
-            fetchPriority={index === 0 ? "high" : "auto"}
-          />
-        ))}
-      </div>
-      <HomeNavigation />
-    </section>
+    <>
+      <HomeHero />
+      <HomePortfolio />
+    </>
   );
 }
