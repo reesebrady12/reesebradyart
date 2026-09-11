@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { HomeNavigation } from "../HomeNavigation";
 import { heroImages } from "../../data/heroImages";
 import { getArtworkPublicUrl } from "../../lib/artwork-storage";
 
@@ -37,7 +36,6 @@ export function HomeHero() {
           />
         ))}
       </div>
-      <HomeNavigation />
     </section>
   );
 }

@@ -32,12 +32,15 @@
   cursor: pointer;
 }
 .site-header {
+  position: relative;
+  z-index: 4;
   height: 90px;
   padding: 0 clamp(24px, 5vw, 72px);
   display: flex;
   align-items: center;
   justify-content: space-between;
   border-bottom: 1px solid var(--line);
+  background: var(--paper);
 }
 
 /* Full-viewport homepage */
@@ -45,7 +48,7 @@
   overflow-x: hidden;
 }
 .home-scroll-active {
-  scroll-snap-type: y proximity;
+  scroll-snap-type: y mandatory;
   scroll-padding-top: 0;
 }
 .home-main {
@@ -54,6 +57,8 @@
 }
 .home-hero {
   width: 100%;
+  height: 100vh;
+  height: 100dvh;
   min-height: 100vh;
   min-height: 100dvh;
   overflow: hidden;
@@ -80,17 +85,6 @@
 .home-slideshow img.is-active {
   opacity: 1;
 }
-.home-header {
-  position: absolute;
-  inset: 0 0 auto;
-  z-index: 2;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: clamp(22px, 3.2vw, 46px) clamp(22px, 4vw, 58px);
-  color: white;
-  text-shadow: 0 1px 10px rgb(0 0 0 / 45%);
-}
 .home-wordmark {
   font-family: "Playfair Display", Georgia, serif;
   font-size: clamp(1.2rem, 2vw, 1.55rem);
@@ -106,6 +100,9 @@
   background: transparent;
   color: inherit;
   cursor: pointer;
+}
+.responsive-site-header .menu-toggle {
+  display: none;
 }
 .menu-toggle span,
 .menu-close span {
@@ -167,11 +164,15 @@
 }
 .home-portfolio {
   width: 100%;
-  padding: clamp(72px, 10vw, 150px) clamp(22px, 5vw, 76px)
-    clamp(100px, 14vw, 210px);
+  padding: 0 0 clamp(100px, 14vw, 210px);
   background: var(--paper);
   scroll-snap-align: start;
   scroll-snap-stop: always;
+}
+.home-portfolio-navigation {
+  position: sticky;
+  top: 0;
+  width: 100%;
 }
 .home-portfolio-intro {
   display: grid;
@@ -180,6 +181,7 @@
   gap: clamp(30px, 8vw, 130px);
   max-width: 1500px;
   margin: 0 auto clamp(90px, 13vw, 190px);
+  padding: clamp(72px, 10vw, 150px) clamp(22px, 5vw, 76px) 0;
 }
 .home-portfolio-intro .eyebrow {
   margin: 0 0 0.75em;
@@ -193,6 +195,7 @@
 .home-work-group {
   max-width: 1500px;
   margin: 0 auto clamp(130px, 18vw, 260px);
+  padding-inline: clamp(22px, 5vw, 76px);
 }
 .home-work-group:last-child {
   margin-bottom: 0;
@@ -674,6 +677,12 @@ footer {
   .site-header {
     height: 72px;
   }
+  .responsive-site-header .desktop-navigation {
+    display: none;
+  }
+  .responsive-site-header .menu-toggle {
+    display: block;
+  }
   .hero {
     min-height: 420px;
   }
@@ -736,18 +745,10 @@ footer {
 }
 @media (max-width: 480px) {
   .site-header {
-    height: auto;
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 8px;
-    padding-top: 13px;
-    padding-bottom: 8px;
-  }
-  .site-header nav {
-    width: 100%;
-    overflow-x: auto;
-    padding-bottom: 4px;
-    white-space: nowrap;
+    height: 72px;
+    align-items: center;
+    flex-direction: row;
+    padding-block: 0;
   }
   nav {
     gap: 18px;

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { mapProduct, useCatalog } from "../../context/CatalogContext";
 import type { Product } from "../../types";
 import { ArtworkShowcaseItem } from "./ArtworkShowcaseItem";
+import { HomeNavigation } from "../HomeNavigation";
 
 const timestamp = (artwork: Product) => {
   if (artwork.completionDate) {
@@ -70,7 +71,12 @@ export function HomePortfolio() {
   const isLoading = availableLoading || loading;
 
   return (
-    <section className="home-portfolio" aria-labelledby="portfolio-heading">
+    <section
+      id="portfolio"
+      className="home-portfolio"
+      aria-labelledby="portfolio-heading"
+    >
+      <HomeNavigation className="home-portfolio-navigation" />
       <header className="home-portfolio-intro">
         <p className="eyebrow">Selected paintings and projects</p>
         <h1 id="portfolio-heading">Portfolio</h1>
