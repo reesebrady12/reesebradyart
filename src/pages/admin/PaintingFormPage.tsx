@@ -342,7 +342,13 @@ export function PaintingFormPage() {
           ? `${message} Your painting record remains safely saved as a draft; retry to finish the uploads.`
           : message,
       );
-      if (typeof reason === "object" && reason && "fields" in reason)
+      if (
+        typeof reason === "object" &&
+        reason &&
+        "fields" in reason &&
+        reason.fields &&
+        typeof reason.fields === "object"
+      )
         setFields(reason.fields as Record<string, string>);
     } finally {
       setSaving(false);

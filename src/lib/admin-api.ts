@@ -15,10 +15,16 @@ export async function adminApi<T>(
   });
   if (response.status === 204) return undefined as T;
   const body = await response.json();
-  if (!response.ok)
-    throw Object.assign(new Error(body.error ?? "Request failed."), {
-      fields: body.fields,
-      status: response.status,
-    });
+  if (!response.ok) {
+    const error = Object.assign(
+      new Error(
+        typeof body.error === "string" ? body.error : "Request failed.",
+      ),
+      { status: response.status },
+    );
+    if (body.fields && typeof body.fields === "object")
+      Object.assign(error, { fields: body.fields });
+    throw error;
+  }
   return body;
 }

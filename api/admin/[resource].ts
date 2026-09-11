@@ -42,6 +42,11 @@ const cleanName = (name: string) =>
     .replace(/[^a-z0-9._-]/g, "-")
     .replace(/-+/g, "-")
     .slice(-100);
+const maximumImageBytes = () => {
+  const configured = Number(process.env.MAX_IMAGE_UPLOAD_MB ?? 40);
+  const megabytes = Number.isFinite(configured) && configured > 0 ? configured : 40;
+  return Math.floor(megabytes * 1024 * 1024);
+};
 const hasImageSignature = (bytes: Uint8Array, mimeType: string) => {
   if (mimeType === "image/jpeg")
     return bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
@@ -429,7 +434,7 @@ export default async function handler(
           assetId,
           version = "original",
         } = request.body ?? {};
-        const max = Number(process.env.MAX_IMAGE_UPLOAD_MB ?? 40) * 1024 * 1024;
+        const max = maximumImageBytes();
         const validAssetId =
           typeof assetId === "string" &&
           /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
@@ -441,19 +446,32 @@ export default async function handler(
           "gallery",
           "large",
         ].includes(version);
+        if (typeof paintingId !== "string" || typeof filename !== "string")
+          throw Object.assign(new Error("Invalid painting upload request."), {
+            status: 422,
+          });
+        if (!allowedTypes.includes(mimeType))
+          throw Object.assign(
+            new Error("Use a JPEG, PNG, WebP, or AVIF image."),
+            { status: 422 },
+          );
         if (
-          typeof paintingId !== "string" ||
-          typeof filename !== "string" ||
-          !allowedTypes.includes(mimeType) ||
           !validAssetId ||
           !validVersion ||
-          (version !== "original" && mimeType !== "image/webp") ||
-          !Number.isInteger(fileSize) ||
-          fileSize < 1 ||
-          fileSize > max
+          (version !== "original" && mimeType !== "image/webp")
         )
+          throw Object.assign(new Error("Invalid image upload metadata."), {
+            status: 422,
+          });
+        if (!Number.isInteger(fileSize) || fileSize < 1)
+          throw Object.assign(new Error("The selected image is empty."), {
+            status: 422,
+          });
+        if (fileSize > max)
           throw Object.assign(
-            new Error("Choose a supported image within the upload limit."),
+            new Error(
+              `The selected image exceeds the ${Math.floor(max / 1024 / 1024)} MB upload limit.`,
+            ),
             { status: 422 },
           );
         const { data: painting } = await supabase
@@ -483,7 +501,7 @@ export default async function handler(
       }
       if (request.method === "POST" && request.query.action === "complete") {
         const body = request.body ?? {};
-        const max = Number(process.env.MAX_IMAGE_UPLOAD_MB ?? 40) * 1024 * 1024;
+        const max = maximumImageBytes();
         const imageRoot = artworkRoot(body.painting_id);
         if (
           !body.storage_path?.startsWith(`${imageRoot}/original/`) ||
