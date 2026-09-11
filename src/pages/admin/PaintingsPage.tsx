@@ -34,8 +34,24 @@ export function PaintingsPage() {
   const [error, setError] = useState("");
   const load = () =>
     adminApi<{ paintings: Painting[] }>("/api/admin/paintings")
-      .then((d) => setPaintings(d.paintings))
-      .catch((e) => setError(e.message))
+      .then((data) => {
+        if (!Array.isArray(data.paintings))
+          throw new Error("The painting list returned an invalid response.");
+        setPaintings(
+          data.paintings.filter(
+            (painting): painting is Painting =>
+              Boolean(painting && typeof painting === "object"),
+          ),
+        );
+        setError("");
+      })
+      .catch((reason: unknown) =>
+        setError(
+          reason instanceof Error
+            ? reason.message
+            : "Paintings could not be loaded.",
+        ),
+      )
       .finally(() => setLoading(false));
   useEffect(() => {
     void load();
@@ -45,7 +61,9 @@ export function PaintingsPage() {
       paintings
         .filter(
           (p) =>
-            p.title.toLowerCase().includes(query.toLowerCase()) &&
+            String(p.title ?? "")
+              .toLowerCase()
+              .includes(query.toLowerCase()) &&
             (filter === "all" ||
               filter === p.status ||
               filter === p.type ||
@@ -57,7 +75,7 @@ export function PaintingsPage() {
         .sort(
           (a, b) =>
             Number(b.completion_year ?? 0) - Number(a.completion_year ?? 0) ||
-            a.title.localeCompare(b.title),
+            String(a.title ?? "").localeCompare(String(b.title ?? "")),
         ),
     [paintings, query, filter, medium, year],
   );

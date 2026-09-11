@@ -26,7 +26,11 @@ export class AppErrorBoundary extends Component<
         <main className="fatal-error" role="alert">
           <p className="eyebrow">Application error</p>
           <h1>The site could not finish loading.</h1>
-          <p>{this.state.error.message}</p>
+          <p>
+            {import.meta.env.DEV
+              ? this.state.error.message
+              : "Please reload the page and try again."}
+          </p>
           <button type="button" onClick={() => window.location.reload()}>
             Reload the page
           </button>

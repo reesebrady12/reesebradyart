@@ -65,6 +65,25 @@ const slugify = (value: string) =>
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "");
 
+const normalizePainting = (value: unknown): Record<string, unknown> => {
+  if (!value || typeof value !== "object")
+    throw new Error("The painting returned an invalid response.");
+  const painting = value as Partial<Painting>;
+  return {
+    ...blank,
+    ...painting,
+    painting_images: Array.isArray(painting.painting_images)
+      ? painting.painting_images.filter(Boolean)
+      : [],
+    product_variants: Array.isArray(painting.product_variants)
+      ? painting.product_variants.filter(Boolean)
+      : [],
+    price_dollars: Number.isFinite(Number(painting.price_in_cents))
+      ? (Number(painting.price_in_cents) / 100).toFixed(2)
+      : "",
+  };
+};
+
 export function PaintingFormPage() {
   const { id } = useParams();
   const [, navigate] = useLocation();
@@ -92,10 +111,7 @@ export function PaintingFormPage() {
       const data = await adminApi<{ painting: Painting }>(
         `/api/admin/paintings?id=${id}`,
       );
-      setForm({
-        ...data.painting,
-        price_dollars: (data.painting.price_in_cents / 100).toFixed(2),
-      });
+      setForm(normalizePainting(data.painting));
       setRemovedImages([]);
       dirty.current = false;
     } catch (reason) {
@@ -115,10 +131,7 @@ export function PaintingFormPage() {
     void adminApi<{ painting: Painting }>(`/api/admin/paintings?id=${id}`)
       .then((data) => {
         if (!active) return;
-        setForm({
-          ...data.painting,
-          price_dollars: (data.painting.price_in_cents / 100).toFixed(2),
-        });
+        setForm(normalizePainting(data.painting));
         dirty.current = false;
       })
       .catch((reason: unknown) => {

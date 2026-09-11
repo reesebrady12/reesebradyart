@@ -57,10 +57,7 @@ export async function inspectPaintingFile(file: File) {
   }
 }
 
-async function makeWebVersion(file: File, maximumWidth: number) {
-  const bitmap = await createImageBitmap(file, {
-    imageOrientation: "from-image",
-  });
+async function makeWebVersion(bitmap: ImageBitmap, maximumWidth: number) {
   const scale = Math.min(1, maximumWidth / bitmap.width);
   const width = Math.max(1, Math.round(bitmap.width * scale));
   const height = Math.max(1, Math.round(bitmap.height * scale));
@@ -72,7 +69,6 @@ async function makeWebVersion(file: File, maximumWidth: number) {
   context.imageSmoothingEnabled = true;
   context.imageSmoothingQuality = "high";
   context.drawImage(bitmap, 0, 0, width, height);
-  bitmap.close();
   const blob = await new Promise<Blob | null>((resolve) =>
     canvas.toBlob(resolve, "image/webp", 0.93),
   );
@@ -91,11 +87,29 @@ export async function uploadPaintingImage(
   if (!supabase)
     throw new Error("Supabase browser credentials are not configured.");
   report("processing", 5);
-  const [thumbnail, gallery, large] = await Promise.all([
-    makeWebVersion(image.file, 400),
-    makeWebVersion(image.file, 1200),
-    makeWebVersion(image.file, 2400),
-  ]);
+  let bitmap: ImageBitmap;
+  try {
+    bitmap = await createImageBitmap(image.file, {
+      imageOrientation: "from-image",
+    });
+  } catch {
+    report("error", 0);
+    throw new Error(
+      `${image.file.name}: this browser could not prepare the image. Try exporting it as a standard JPEG and upload it again.`,
+    );
+  }
+  let thumbnail: Blob;
+  let gallery: Blob;
+  let large: Blob;
+  try {
+    // Decode the master once and render each size in sequence. Large camera
+    // images otherwise require several full-resolution bitmaps at the same time.
+    thumbnail = await makeWebVersion(bitmap, 400);
+    gallery = await makeWebVersion(bitmap, 1200);
+    large = await makeWebVersion(bitmap, 2400);
+  } finally {
+    bitmap.close();
+  }
   const assetId = crypto.randomUUID();
   const versions = [
     { version: "original", file: image.file, mimeType: image.file.type },

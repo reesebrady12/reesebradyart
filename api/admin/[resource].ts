@@ -123,7 +123,11 @@ export default async function handler(
             status: error.code === "PGRST116" ? 404 : 500,
           });
         const attachImageUrls = (painting: typeof data) => {
-          const paintingImages = (painting.painting_images ?? []).map(
+          if (!painting || typeof painting !== "object") return null;
+          const paintingImages = (Array.isArray(painting.painting_images)
+            ? painting.painting_images
+            : []
+          ).map(
             (image: {
               storage_path: string;
               thumbnail_path?: string;
@@ -160,12 +164,20 @@ export default async function handler(
                 (image: { is_primary?: boolean }) => image.is_primary,
               )?.public_url ?? artworkUrl(supabase.storage, painting.image),
             painting_images: paintingImages,
+            product_variants: Array.isArray(painting.product_variants)
+              ? painting.product_variants
+              : [],
           };
         };
+        const paintings = id
+          ? null
+          : data
+              .map(attachImageUrls)
+              .filter((painting: unknown) => painting !== null);
         return response.json(
           id
             ? { painting: attachImageUrls(data) }
-            : { paintings: data.map(attachImageUrls) },
+            : { paintings },
         );
       }
       if (request.method === "POST") {
@@ -596,7 +608,12 @@ export default async function handler(
               body.storage_path,
               ...derivedPaths.map(([, path]) => path),
             ]);
-          throw error;
+          throw Object.assign(
+            new Error(
+              "The image was uploaded, but its metadata could not be saved. Confirm that the latest Supabase migrations have been applied, then retry.",
+            ),
+            { status: 422 },
+          );
         }
         if (count === 0)
           await supabase
