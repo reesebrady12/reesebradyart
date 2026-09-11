@@ -1,6 +1,6 @@
 import { getArtworkPublicUrl } from "../lib/artwork-storage";
 
-const aboutImagePath = "about/about-me.webp";
+const aboutImagePath = "about/about-me.jpeg";
 
 export function AboutPage() {
   return (
