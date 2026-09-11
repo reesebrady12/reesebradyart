@@ -8,9 +8,9 @@ export type HeroImage = {
 // to CSS object-position, so it can be used to fine-tune each image's crop.
 export const heroImages: HeroImage[] = [
   { path: "home/bigsur2.jpeg", position: "center" },
-  { path: "home/carl.jpeg", position: "center top" },
-  { path: "home/wildflowers.jpeg", position: "center top" },
-  { path: "home/fam.jpeg", position: "center top" },
-  { path: "home/joe.jpeg", position: "center top" },
-  { path: "home/anders.jpeg", position: "center top" },
+  { path: "home/carl.jpeg", position: "center" },
+  { path: "home/wildflowers.jpeg", position: "center" },
+  { path: "home/fam.jpeg", position: "center" },
+  { path: "home/joe.jpeg", position: "center" },
+  { path: "home/anders.jpeg", position: "center" },
 ];
